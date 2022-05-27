@@ -5,8 +5,8 @@
     Version: November 12, 2010
 
   This library is designed to use CC1101/CC1100 module on Arduino platform.
-  CC1101/CC1100 module is an useful wireless module.Using the functions of the 
-  library, you can easily send and receive data by the CC1101/CC1100 module. 
+  CC1101/CC1100 module is an useful wireless module.Using the functions of the
+  library, you can easily send and receive data by the CC1101/CC1100 module.
   Just have fun!
   For the details, please refer to the datasheet of CC1100/CC1101.
 ----------------------------------------------------------------------------------------------------------------
@@ -129,6 +129,8 @@ private:
   void Split_MDMCFG4(void);
 public:
   void Init(void);
+
+  // SPI
   byte SpiReadStatus(byte addr);
   void setSpiPin(byte sck, byte miso, byte mosi, byte ss);
   void addSpiPin(byte sck, byte miso, byte mosi, byte ss, byte modul);
@@ -136,40 +138,60 @@ public:
   void setGDO0(byte gdo0);
   void addGDO(byte gdo0, byte gdo2, byte modul);
   void addGDO0(byte gdo0, byte modul);
+
   void setModul(byte modul);
   void setCCMode(bool s);
   void setModulation(byte m);
   void setPA(int p);
   void setMHZ(float mhz);
+  void set433p92MHZ(void);
+
   void setChannel(byte chnl);
   void setChsp(float f);
   void setRxBW(float f);
   void setDRate(float d);
   void setDeviation(float d);
+
   void SetTx(void);
   void SetRx(void);
   void SetTx(float mhz);
   void SetRx(float mhz);
+
    int getRssi(void);
   byte getLqi(void);
+
   void setSres(void);
   void setSidle(void);
   void goSleep(void);
+
+  // TX data
   void SendData(byte *txBuffer, byte size);
   void SendData(char *txchar);
   void SendData(byte *txBuffer, byte size, int t);
   void SendData(char *txchar, int t);
+
+  // RX data
+  byte ReceiveData(byte *rxBuffer, byte size);
+  byte ReceiveDataNew(byte *rxBuffer, byte limit);
+  byte ReceiveDataOld(byte *rxBuffer);
   byte CheckReceiveFlag(void);
-  byte ReceiveData(byte *rxBuffer);
+  bool CheckRxFifo(int t);
+  byte CheckRXFIFO(void);
+
   bool CheckCRC(void);
+
   void SpiStrobe(byte strobe);
+
   void SpiWriteReg(byte addr, byte value);
   void SpiWriteBurstReg(byte addr, byte *buffer, byte num);
+
   byte SpiReadReg(byte addr);
   void SpiReadBurstReg(byte addr, byte *buffer, byte num);
+
   void setClb(byte b, byte s, byte e);
   bool getCC1101(void);
   byte getMode(void);
+
   void setSyncWord(byte sh, byte sl);
   void setAddr(byte v);
   void setWhiteData(bool v);
@@ -186,7 +208,7 @@ public:
   void setCRC_AF(bool v);
   void setAppendStatus(bool v);
   void setAdrChk(byte v);
-  bool CheckRxFifo(int t);
+
 };
 
 extern ELECHOUSE_CC1101 ELECHOUSE_cc1101;

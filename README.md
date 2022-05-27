@@ -2,6 +2,23 @@
 
 ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/LSatan/SmartRC-CC1101-Driver-Lib)
 
+
+## Change log (differences from original LSatan's version)
+
+* dos2unix'ed all sources
+* Default modulation changed to 2 (FSK)
+* `ReceiveData()` renamed to `ReceiveDataOld()`
+* New `ReceiveData(byte *rxBuffer, byte size)` read out from RX FIFO exact size of data which should be received (based on our own protocol specs)
+* Added `set433p92MHZ()` with precalculated setting to setup 433.92MHz
+
+## TODO
+
+* Try to porting for ESP32-C3|S2|S3 (it seems doesn't work out of the box)
+
+
+
+----
+
 Note: Find out about the laws in your country.
 Use at your own risk.
 

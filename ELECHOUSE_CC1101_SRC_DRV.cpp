@@ -5,8 +5,8 @@
     Version: November 12, 2010
 
   This library is designed to use CC1101/CC1100 module on Arduino platform.
-  CC1101/CC1100 module is an useful wireless module.Using the functions of the 
-  library, you can easily send and receive data by the CC1101/CC1100 module. 
+  CC1101/CC1100 module is an useful wireless module.Using the functions of the
+  library, you can easily send and receive data by the CC1101/CC1100 module.
   Just have fun!
   For the details, please refer to the datasheet of CC1100/CC1101.
 ----------------------------------------------------------------------------------------------------------------
@@ -24,7 +24,7 @@ cc1101 Driver for RC Switch. Mod by Little Satan. With permission to modify and 
 #define   BYTES_IN_RXFIFO   0x7F            //byte number in RXfifo
 #define   max_modul 6
 
-byte modulation = 2;
+byte modulation = 0; //2-FSK
 byte frend0;
 byte chan = 0;
 int pa = 12;
@@ -86,10 +86,10 @@ uint8_t PA_TABLE_915[10] {0x03,0x0E,0x1E,0x27,0x38,0x8E,0x84,0xCC,0xC3,0xC0,};  
 void ELECHOUSE_CC1101::SpiStart(void)
 {
   // initialize the SPI pins
-  pinMode(SCK_PIN, OUTPUT);
+  pinMode(SCK_PIN,  OUTPUT);
   pinMode(MOSI_PIN, OUTPUT);
-  pinMode(MISO_PIN, INPUT);
-  pinMode(SS_PIN, OUTPUT);
+  pinMode(MISO_PIN,  INPUT);
+  pinMode(SS_PIN,   OUTPUT);
 
   // enable SPI
   #ifdef ESP32
@@ -118,8 +118,8 @@ void ELECHOUSE_CC1101::SpiEnd(void)
 ****************************************************************/
 void ELECHOUSE_CC1101::GDO_Set (void)
 {
-	pinMode(GDO0, OUTPUT);
-	pinMode(GDO2, INPUT);
+  pinMode(GDO0, OUTPUT);
+  pinMode(GDO2, INPUT);
 }
 /****************************************************************
 *FUNCTION NAME: GDO_Set()
@@ -139,15 +139,15 @@ void ELECHOUSE_CC1101::GDO0_Set (void)
 ****************************************************************/
 void ELECHOUSE_CC1101::Reset (void)
 {
-	digitalWrite(SS_PIN, LOW);
-	delay(1);
-	digitalWrite(SS_PIN, HIGH);
-	delay(1);
-	digitalWrite(SS_PIN, LOW);
-	while(digitalRead(MISO_PIN));
+  digitalWrite(SS_PIN, LOW);
+  delay(1);
+  digitalWrite(SS_PIN, HIGH);
+  delay(1);
+  digitalWrite(SS_PIN, LOW);
+  while(digitalRead(MISO_PIN));
   SPI.transfer(CC1101_SRES);
   while(digitalRead(MISO_PIN));
-	digitalWrite(SS_PIN, HIGH);
+  digitalWrite(SS_PIN, HIGH);
 }
 /****************************************************************
 *FUNCTION NAME:Init
@@ -159,7 +159,7 @@ void ELECHOUSE_CC1101::Init(void)
 {
   setSpi();
   SpiStart();                   //spi initialization
-  digitalWrite(SS_PIN, HIGH);
+  digitalWrite(SS_PIN,  HIGH);
   digitalWrite(SCK_PIN, HIGH);
   digitalWrite(MOSI_PIN, LOW);
   Reset();                    //CC1101 reset
@@ -178,7 +178,7 @@ void ELECHOUSE_CC1101::SpiWriteReg(byte addr, byte value)
   digitalWrite(SS_PIN, LOW);
   while(digitalRead(MISO_PIN));
   SPI.transfer(addr);
-  SPI.transfer(value); 
+  SPI.transfer(value);
   digitalWrite(SS_PIN, HIGH);
   SpiEnd();
 }
@@ -224,7 +224,7 @@ void ELECHOUSE_CC1101::SpiStrobe(byte strobe)
 *INPUT        :addr: register address
 *OUTPUT       :register value
 ****************************************************************/
-byte ELECHOUSE_CC1101::SpiReadReg(byte addr) 
+byte ELECHOUSE_CC1101::SpiReadReg(byte addr)
 {
   byte temp, value;
   SpiStart();
@@ -266,7 +266,7 @@ void ELECHOUSE_CC1101::SpiReadBurstReg(byte addr, byte *buffer, byte num)
 *INPUT        :addr: register address
 *OUTPUT       :status value
 ****************************************************************/
-byte ELECHOUSE_CC1101::SpiReadStatus(byte addr) 
+byte ELECHOUSE_CC1101::SpiReadStatus(byte addr)
 {
   byte value,temp;
   SpiStart();
@@ -334,7 +334,7 @@ void ELECHOUSE_CC1101::addSpiPin(byte sck, byte miso, byte mosi, byte ss, byte m
 ****************************************************************/
 void ELECHOUSE_CC1101::setGDO(byte gdo0, byte gdo2){
 GDO0 = gdo0;
-GDO2 = gdo2;  
+GDO2 = gdo2;
 GDO_Set();
 }
 /****************************************************************
@@ -355,7 +355,7 @@ GDO0_Set();
 ****************************************************************/
 void ELECHOUSE_CC1101::addGDO(byte gdo0, byte gdo2, byte modul){
 GDO0_M[modul] = gdo0;
-GDO2_M[modul] = gdo2;  
+GDO2_M[modul] = gdo2;
 gdo_set=2;
 GDO_Set();
 }
@@ -396,25 +396,43 @@ void ELECHOUSE_CC1101::setModul(byte modul){
 *OUTPUT       :none
 ****************************************************************/
 void ELECHOUSE_CC1101::setCCMode(bool s){
-ccmode = s;
-if (ccmode == 1){
-SpiWriteReg(CC1101_IOCFG2,      0x0B);
-SpiWriteReg(CC1101_IOCFG0,      0x06);
-SpiWriteReg(CC1101_PKTCTRL0,    0x05);
-SpiWriteReg(CC1101_MDMCFG3,     0xF8);
-SpiWriteReg(CC1101_MDMCFG4,11+m4RxBw);
-}else{
-SpiWriteReg(CC1101_IOCFG2,      0x0D);
-SpiWriteReg(CC1101_IOCFG0,      0x0D);
-SpiWriteReg(CC1101_PKTCTRL0,    0x32);
-SpiWriteReg(CC1101_MDMCFG3,     0x93);
-SpiWriteReg(CC1101_MDMCFG4, 7+m4RxBw);
-}
-setModulation(modulation);
+  ccmode = s;
+  if (ccmode == 1){
+
+    // Serial Clock. Synchronous to the data in synchronous serial mode.
+    // In RX mode, data is set up on the falling edge by CC1101 when GDOx_INV=0.
+    // In TX mode, data is sampled by CC1101 on the rising edge of the serial clock when GDOx_INV=0
+    //SpiWriteReg(CC1101_IOCFG2,      0x0B); // Table 41. Page 62
+
+    // 0x0E = Carrier sense. High if RSSI level is above threshold.
+    SpiWriteReg(CC1101_IOCFG2,      0x0E); // Table 41. Page 62
+
+    // Asserts when sync word has been sent / received, and de-asserts at the end of the packet.
+    // In RX, the pin will also de-assert when a packet is discarded due to address
+    // or maximum length filtering or when the radio enters RXFIFO_OVERFLOW state.
+    // In TX the pin will de-assert if the TX FIFO underflows.
+    SpiWriteReg(CC1101_IOCFG0,      0x06); // Table 41. Page 62
+
+    //SpiWriteReg(CC1101_PKTCTRL0,    0x05);// CRC enabled; Variable packet length mode
+    SpiWriteReg(CC1101_PKTCTRL0,    0x02);// no CRC check; Infinite packet length mode
+    SpiWriteReg(CC1101_MDMCFG3,     0xF8);
+    SpiWriteReg(CC1101_MDMCFG4,11+m4RxBw);
+  }else{
+
+    // Serial Data Output. Used for asynchronous serial mode
+    SpiWriteReg(CC1101_IOCFG2,      0x0D); // Table 41. Page 62
+    // Serial Data Output. Used for asynchronous serial mode
+    SpiWriteReg(CC1101_IOCFG0,      0x0D); // Table 41. Page 62
+
+    SpiWriteReg(CC1101_PKTCTRL0,    0x32);
+    SpiWriteReg(CC1101_MDMCFG3,     0x93);
+    SpiWriteReg(CC1101_MDMCFG4, 7+m4RxBw);
+  }
+  setModulation(modulation);
 }
 /****************************************************************
 *FUNCTION NAME:Modulation
-*FUNCTION     :set CC1101 Modulation 
+*FUNCTION     :set CC1101 Modulation
 *INPUT        :none
 *OUTPUT       :none
 ****************************************************************/
@@ -436,7 +454,7 @@ setPA(pa);
 }
 /****************************************************************
 *FUNCTION NAME:PA Power
-*FUNCTION     :set CC1101 PA Power 
+*FUNCTION     :set CC1101 PA Power
 *INPUT        :none
 *OUTPUT       :none
 ****************************************************************/
@@ -494,11 +512,11 @@ else if (pa > 10){a = PA_TABLE_915[9];}
 last_pa = 4;
 }
 if (modulation == 2){
-PA_TABLE[0] = 0;  
+PA_TABLE[0] = 0;
 PA_TABLE[1] = a;
 }else{
-PA_TABLE[0] = a;  
-PA_TABLE[1] = 0; 
+PA_TABLE[0] = a;
+PA_TABLE[1] = 0;
 }
 SpiWriteBurstReg(CC1101_PATABLE,PA_TABLE,8);
 }
@@ -538,6 +556,53 @@ SpiWriteReg(CC1101_FREQ0, freq0);
 
 Calibrate();
 }
+
+/****************************************************************
+*FUNCTION NAME:Frequency Calculator
+*FUNCTION     :Calculate the basic frequency.
+*INPUT        :none
+*OUTPUT       :none
+****************************************************************/
+void ELECHOUSE_CC1101::set433p92MHZ(){
+int a;
+MHz = 433.92;
+
+SpiWriteReg(CC1101_FREQ2, 0x10);
+SpiWriteReg(CC1101_FREQ1, 0xB0);
+SpiWriteReg(CC1101_FREQ0, 0x71);
+
+SpiWriteReg(CC1101_FSCTRL0, map(MHz, 378, 464, clb2[0], clb2[1]));
+SpiWriteReg(CC1101_TEST0,0x09);
+
+int s = ELECHOUSE_cc1101.SpiReadStatus(CC1101_FSCAL2);
+if (s<32){
+  SpiWriteReg(CC1101_FSCAL2, s+32);
+}
+if (last_pa != 2){
+  //setPA(pa);
+  if      (pa <= -30)             {a = PA_TABLE_433[0];}
+  else if (pa >  -30 && pa <= -20){a = PA_TABLE_433[1];}
+  else if (pa >  -20 && pa <= -15){a = PA_TABLE_433[2];}
+  else if (pa >  -15 && pa <= -10){a = PA_TABLE_433[3];}
+  else if (pa >  -10 && pa <=   0){a = PA_TABLE_433[4];}
+  else if (pa >    0 && pa <=   5){a = PA_TABLE_433[5];}
+  else if (pa >    5 && pa <=   7){a = PA_TABLE_433[6];}
+  else if (pa >    7)             {a = PA_TABLE_433[7];}
+  last_pa = 2;
+
+  if (modulation == 2){
+    PA_TABLE[0] = 0;
+    PA_TABLE[1] = a;
+  }else{
+    PA_TABLE[0] = a;
+    PA_TABLE[1] = 0;
+  }
+  SpiWriteBurstReg(CC1101_PATABLE,PA_TABLE,8);
+}
+}
+
+
+
 /****************************************************************
 *FUNCTION NAME:Calibrate
 *FUNCTION     :Calibrate frequency
@@ -593,19 +658,19 @@ if (last_pa != 4){setPA(pa);}
 void ELECHOUSE_CC1101::setClb(byte b, byte s, byte e){
 if (b == 1){
 clb1[0]=s;
-clb1[1]=e;  
+clb1[1]=e;
 }
 else if (b == 2){
 clb2[0]=s;
-clb2[1]=e;  
+clb2[1]=e;
 }
 else if (b == 3){
 clb3[0]=s;
-clb3[1]=e;  
+clb3[1]=e;
 }
 else if (b == 4){
 clb4[0]=s;
-clb4[1]=e;  
+clb4[1]=e;
 }
 }
 /****************************************************************
@@ -1028,13 +1093,13 @@ else{m4DaRa = calc; i=1;}
 *INPUT        :none
 *OUTPUT       :none
 ****************************************************************/
-void ELECHOUSE_CC1101::RegConfigSettings(void) 
-{   
+void ELECHOUSE_CC1101::RegConfigSettings(void)
+{
     SpiWriteReg(CC1101_FSCTRL1,  0x06);
-    
+
     setCCMode(ccmode);
     setMHZ(MHz);
-    
+
     SpiWriteReg(CC1101_MDMCFG1,  0x02);
     SpiWriteReg(CC1101_MDMCFG0,  0xF8);
     SpiWriteReg(CC1101_CHANNR,   chan);
@@ -1114,13 +1179,19 @@ void ELECHOUSE_CC1101::SetRx(float mhz)
 *INPUT        :none
 *OUTPUT       :none
 ****************************************************************/
+// from https://www.ti.com/lit/an/swra114d/swra114d.pdf
+// page 3
+#define RSSI_OFFSET (74)
 int ELECHOUSE_CC1101::getRssi(void)
 {
-int rssi;
-rssi=SpiReadStatus(CC1101_RSSI);
-if (rssi >= 128){rssi = (rssi-256)/2-74;}
-else{rssi = (rssi/2)-74;}
-return rssi;
+int rssi_dBm;
+rssi_dBm=SpiReadStatus(CC1101_RSSI);
+if (rssi_dBm >= 128){
+  rssi_dBm = (rssi_dBm-256)/2 - RSSI_OFFSET;
+}else{
+  rssi_dBm = (rssi_dBm/2) - RSSI_OFFSET;
+}
+return rssi_dBm;
 }
 /****************************************************************
 *FUNCTION NAME:LQI Level
@@ -1192,7 +1263,7 @@ void ELECHOUSE_CC1101::SendData(byte *txBuffer,byte size)
   SpiWriteBurstReg(CC1101_TXFIFO,txBuffer,size);      //write data to send
   SpiStrobe(CC1101_SIDLE);
   SpiStrobe(CC1101_STX);                  //start send
-    while (!digitalRead(GDO0));               // Wait for GDO0 to be set -> sync transmitted  
+    while (!digitalRead(GDO0));               // Wait for GDO0 to be set -> sync transmitted
     while (digitalRead(GDO0));                // Wait for GDO0 to be cleared -> end of packet
   SpiStrobe(CC1101_SFTX);                 //flush TXfifo
   trxstate=1;
@@ -1247,61 +1318,123 @@ return 0;
 *FUNCTION NAME:CheckRxFifo
 *FUNCTION     :check receive data or not
 *INPUT        :none
-*OUTPUT       :flag: 0 no data; 1 receive data 
+*OUTPUT       :flag: 0 no data; 1 receive data
 ****************************************************************/
 bool ELECHOUSE_CC1101::CheckRxFifo(int t){
-if(trxstate!=2){SetRx();}
-if(SpiReadStatus(CC1101_RXBYTES) & BYTES_IN_RXFIFO){
-delay(t);
-return 1;
-}else{
-return 0;
+  if(trxstate!=2){
+    SetRx();
+  }
+  if(SpiReadStatus(CC1101_RXBYTES) & BYTES_IN_RXFIFO){
+    delay(t);
+    return 1;
+  }else{
+    return 0;
+  }
 }
+
+/****************************************************************
+*FUNCTION NAME:CheckRxFifo
+*FUNCTION     :check receive data or not
+*INPUT        :none
+*OUTPUT       :number of bytes in Rx fufo
+****************************************************************/
+byte ELECHOUSE_CC1101::CheckRXFIFO(void){
+  if(trxstate!=2){
+    SetRx();
+  }
+  return (SpiReadStatus(CC1101_RXBYTES) & BYTES_IN_RXFIFO);
 }
+
+
 /****************************************************************
 *FUNCTION NAME:CheckReceiveFlag
 *FUNCTION     :check receive data or not
 *INPUT        :none
-*OUTPUT       :flag: 0 no data; 1 receive data 
+*OUTPUT       :flag: 0 no data; 1 receive data
 ****************************************************************/
 byte ELECHOUSE_CC1101::CheckReceiveFlag(void)
 {
-  if(trxstate!=2){SetRx();}
-	if(digitalRead(GDO0))			//receive data
-	{
-		while (digitalRead(GDO0));
-		return 1;
-	}
-	else							// no data
-	{
-		return 0;
-	}
+  if(trxstate!=2){
+    SetRx();}
+  if(digitalRead(GDO0))      //receive data
+  {
+    while (digitalRead(GDO0));
+    return 1;
+  }else{              // no data
+    return 0;
+  }
 }
+
+
+
 /****************************************************************
 *FUNCTION NAME:ReceiveData
 *FUNCTION     :read data received from RXfifo
 *INPUT        :rxBuffer: buffer to store data
+*INPUT        :size of data should be received
 *OUTPUT       :size of data received
 ****************************************************************/
-byte ELECHOUSE_CC1101::ReceiveData(byte *rxBuffer)
+byte ELECHOUSE_CC1101::ReceiveData(byte *rxBuffer, byte size)
 {
-	byte size;
-	byte status[2];
-
-	if(SpiReadStatus(CC1101_RXBYTES) & BYTES_IN_RXFIFO)
-	{
-		size=SpiReadReg(CC1101_RXFIFO);
-		SpiReadBurstReg(CC1101_RXFIFO,rxBuffer,size);
-		SpiReadBurstReg(CC1101_RXFIFO,status,2);
-		SpiStrobe(CC1101_SFRX);
-    SpiStrobe(CC1101_SRX);
-		return size;
-	}
-	else
-	{
-		SpiStrobe(CC1101_SFRX);
-    SpiStrobe(CC1101_SRX);
- 		return 0;
-	}
+  SpiReadBurstReg(CC1101_RXFIFO,rxBuffer,size);
+  SpiStrobe(CC1101_SFRX);
+  SpiStrobe(CC1101_SRX);
+  return size;
 }
 ELECHOUSE_CC1101 ELECHOUSE_cc1101;
+
+
+/****************************************************************
+*FUNCTION NAME:ReceiveDataNew
+*FUNCTION     :read data received from RXfifo
+*INPUT        :rxBuffer: buffer to store data
+*INPUT        :limit of received data size
+*OUTPUT       :size of data received
+****************************************************************/
+byte ELECHOUSE_CC1101::ReceiveDataNew(byte *rxBuffer, byte limit)
+{
+  byte size = SpiReadStatus(CC1101_RXBYTES) & BYTES_IN_RXFIFO;
+
+  if (size > limit)
+    size = limit;
+
+  if(size)
+    SpiReadBurstReg(CC1101_RXFIFO,rxBuffer,size);
+
+  SpiStrobe(CC1101_SFRX);
+  SpiStrobe(CC1101_SRX);
+  return size;
+}
+
+
+/****************************************************************
+*FUNCTION NAME:ReceiveDataOld
+*FUNCTION     :read data received from RXfifo
+*INPUT        :rxBuffer: buffer to store data
+*OUTPUT       :size of data received
+****************************************************************/
+byte ELECHOUSE_CC1101::ReceiveDataOld(byte *rxBuffer)
+{
+  byte size;
+  byte status[2];
+
+  if(SpiReadStatus(CC1101_RXBYTES) & BYTES_IN_RXFIFO)
+  {
+    size=SpiReadReg(CC1101_RXFIFO);
+    SpiReadBurstReg(CC1101_RXFIFO,rxBuffer,size);
+    SpiReadBurstReg(CC1101_RXFIFO,status,2);
+    SpiStrobe(CC1101_SFRX);
+    SpiStrobe(CC1101_SRX);
+    return size;
+  }
+  else
+  {
+    SpiStrobe(CC1101_SFRX);
+    SpiStrobe(CC1101_SRX);
+    return 0;
+  }
+}
+
+
+
+
