@@ -9,7 +9,7 @@
   "repository":
   {
     "type": "git",
-    "url": "https://github.com/LSatan/SmartRC-CC1101-Driver-Lib"
+    "url": "https://github.com/iDoka/SmartRC-CC1101-Driver-Lib"
   },
   "version": "2.5.7",
   "frameworks": [
