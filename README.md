@@ -6,7 +6,7 @@
 ## Change log (differences from original LSatan's version)
 
 * dos2unix'ed all sources
-* Default modulation changed to 2 (FSK)
+* Default modulation changed to `0` (FSK)
 * `ReceiveData()` renamed to `ReceiveDataOld()`
 * New `ReceiveData(byte *rxBuffer, byte size)` read out from RX FIFO exact size of data which should be received (based on our own protocol specs)
 * Added `set433p92MHZ()` with precalculated setting to setup 433.92MHz
